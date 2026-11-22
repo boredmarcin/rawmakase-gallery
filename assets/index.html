@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>{{TITLE}}</title>
+<meta property="og:title" content="{{TITLE}}">
+<meta property="og:image" content="photos/large/{{COVER}}">
+<link rel="stylesheet" href="assets/gallery.css">
+</head>
+<body>
+<header class="cover" id="cover">
+  <img class="cover-photo" src="photos/large/{{COVER}}" alt="">
+  <p class="cover-brand"></p>
+  <div class="cover-text">
+    <div>
+      <h1 class="cover-title"></h1>
+      <p class="cover-subtitle"></p>
+    </div>
+    <a class="cover-button" href="#photos">View gallery</a>
+  </div>
+</header>
+
+<nav class="bar" aria-label="Gallery">
+  <span class="bar-title"></span>
+  <span class="bar-actions">
+    <button class="tab is-on" data-show="all" type="button">All <span class="count-all"></span></button>
+    <button class="tab" data-show="favorites" type="button">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/></svg>
+      Favorites <span class="count-favorites">0</span>
+    </button>
+    <button class="send" type="button" hidden>Send favorites</button>
+  </span>
+</nav>
+
+<main id="photos" class="photos"></main>
+<p class="empty" hidden>No favorites yet. Tap the heart on the photos you like.</p>
+
+<footer class="footer"><span class="footer-author"></span></footer>
+
+<div class="viewer" tabindex="-1" role="dialog" aria-modal="true" aria-label="Photo" hidden>
+  <div class="viewer-top">
+    <button class="viewer-close" type="button" aria-label="Back to the gallery">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12H4m6-6l-6 6 6 6"/></svg>
+    </button>
+    <span class="viewer-tools">
+      <button class="viewer-heart heart" type="button" aria-label="Favorite" aria-pressed="false">
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/></svg>
+      </button>
+      <a class="viewer-download" aria-label="Download" download>
+        <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m-5-5l5 5 5-5M5 20h14"/></svg>
+      </a>
+      <button class="viewer-play" type="button" aria-label="Start slideshow" aria-pressed="false">
+        <svg class="icon icon-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l11 7-11 7z"/></svg>
+        <svg class="icon icon-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5v14M15 5v14"/></svg>
+      </button>
+    </span>
+  </div>
+  <div class="viewer-stage"></div>
+  <p class="viewer-caption"></p>
+  <button class="viewer-prev" type="button" aria-label="Previous photo">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4l-8 8 8 8"/></svg>
+  </button>
+  <button class="viewer-next" type="button" aria-label="Next photo">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4l8 8-8 8"/></svg>
+  </button>
+</div>
+
+<div class="sheet" role="dialog" aria-modal="true" aria-label="Send favorites" hidden>
+  <div class="sheet-card">
+    <h2>Your favorites</h2>
+    <p>Send this list to your photographer.</p>
+    <textarea class="sheet-list" readonly rows="8"></textarea>
+    <div class="sheet-actions">
+      <button class="sheet-close" type="button">Close</button>
+      <button class="sheet-copy" type="button">Copy list</button>
+      <a class="sheet-mail" hidden>E-mail</a>
+    </div>
+  </div>
+</div>
+
+<script id="gallery-data" type="application/json">{{DATA}}</script>
+<script src="assets/gallery.js"></script>
+</body>
+</html>

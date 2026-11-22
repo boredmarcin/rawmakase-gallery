@@ -1,0 +1,53 @@
+[extension]
+id = "pro.stanczak.web-gallery"
+name = "Web Gallery"
+version = "0.3.0"
+rawmakase = ">=0.7"
+api = 4
+license = "MIT"
+description = "Builds a web gallery from the exported photos: a cover, a grid, a full-screen viewer and favorites."
+
+[access]
+files = "any"
+
+[program]
+path = "bin/rawmakase-gallery"
+start = "on-demand"
+
+[[export-destination]]
+id = "web"
+name = "Web Gallery"
+
+[[export-destination.option]]
+id = "title"
+name = "Title"
+help = "Empty: the folder's name"
+control = "text"
+default = ""
+
+[[export-destination.option]]
+id = "subtitle"
+name = "Date"
+help = "Under the title. Empty: when the photos were taken"
+control = "text"
+default = ""
+
+[[export-destination.option]]
+id = "author"
+name = "Author"
+help = "Your name, on the cover"
+control = "text"
+default = ""
+
+[[export-destination.option]]
+id = "email"
+name = "Contact e-mail"
+help = "Where the client sends their favorites"
+control = "text"
+default = ""
+
+[[export-destination.option]]
+id = "layout"
+name = "Layout"
+control = { segmented = ["Masonry", "Grid", "Column"] }
+default = "Masonry"

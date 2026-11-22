@@ -1,0 +1,24 @@
+[package]
+name = "rawmakase-gallery"
+version = "0.3.0"
+edition = "2024"
+description = "Builds a static web gallery from exported JPEGs"
+license = "MIT"
+
+[dependencies]
+rawmakase-extension = { git = "https://github.com/m-stanczak/rawmakase", branch = "export-destination" }
+anyhow = "1"
+image = { version = "0.25", default-features = false, features = ["jpeg"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[[bin]]
+name = "rawmakase-gallery"
+path = "src/main.rs"
+
+[[bin]]
+name = "rawmakase-gallery-cli"
+path = "src/bin/rawmakase-gallery-cli.rs"
+
+[dev-dependencies]
+tempfile = "3"

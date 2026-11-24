@@ -7,9 +7,7 @@ use anyhow::{Context as _, Result, bail, ensure};
 use image::{
     DynamicImage, ImageDecoder, ImageReader, codecs::jpeg::JpegEncoder, imageops::FilterType,
 };
-use rawmakase_extension::protocol::method::{
-    ExportBegin, ExportEnd, ExportEnded, ExportFile, FileResult, Sent,
-};
+use rawmakase_extension::protocol::method::{ExportBegin, ExportEnd, ExportEnded, ExportFile};
 use rawmakase_extension::{
     Context, Delivery, ErrorCode, ExportDestination, Extension, RemoteError, collected,
 };
@@ -402,17 +400,9 @@ fn deliver(cx: &Context, mut delivery: Delivery) -> Result<ExportEnded, RemoteEr
     let out = folder.join(FOLDER);
     build(&photos, &out, &options)
         .map_err(|e| RemoteError::new(ErrorCode::Unavailable, format!("{e:#}")))?;
+    // Every file went into the gallery: no file needs a word.
     Ok(ExportEnded {
-        files: files
-            .iter()
-            .map(|f| FileResult {
-                index: f.index,
-                result: Sent::Sent,
-                message: None,
-                remote_id: None,
-                url: None,
-            })
-            .collect(),
+        files: Vec::new(),
         message: Some(format!("Built the gallery {}", options.title)),
         location: Some(out.join("index.html").display().to_string()),
     })
@@ -453,6 +443,9 @@ impl<T: ExportDestination> ExportDestination for Gallery<T> {
     }
     fn end(&mut self, cx: &Context, end: ExportEnd) -> Result<ExportEnded, RemoteError> {
         self.0.end(cx, end)
+    }
+    fn stopped(&mut self, delivery: &str) {
+        self.0.stopped(delivery);
     }
 }
 

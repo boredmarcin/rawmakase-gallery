@@ -4,7 +4,7 @@ use rawmakase_extension::ServeOptions;
 use rawmakase_extension::mock::MockHost;
 use rawmakase_extension::protocol::ErrorCode;
 use rawmakase_extension::protocol::method::{
-    AppRequest, CatalogFacts, ExportBegin, ExportEnd, ExportEnded, ExportFile, Sent,
+    AppRequest, CatalogFacts, ExportBegin, ExportEnd, ExportEnded, ExportFile,
 };
 use serde_json::Value;
 use std::path::Path;
@@ -87,9 +87,8 @@ fn a_delivery_builds_the_gallery_beside_the_photos() {
         }))
         .unwrap();
     let ended: ExportEnded = serde_json::from_value(answer).unwrap();
-    let mut results: Vec<_> = ended.files.iter().map(|f| (f.index, f.result)).collect();
-    results.sort_unstable_by_key(|(i, _)| *i);
-    assert_eq!(results, [(0, Sent::Sent), (1, Sent::Sent)]);
+    // Both went, so neither needs a result.
+    assert!(ended.files.is_empty());
     let index = folder.join(rawmakase_gallery::FOLDER).join("index.html");
     assert_eq!(ended.location.as_deref(), Some(index.to_str().unwrap()));
     let html = std::fs::read_to_string(&index).unwrap();

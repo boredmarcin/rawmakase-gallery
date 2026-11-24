@@ -7,14 +7,16 @@
   const heartIcon = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20.5s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.6a4.3 4.3 0 0 1 7.5 2.7c0 5.6-7.5 10.2-7.5 10.2z"/></svg>';
   const downloadIcon = '<svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m-5-5l5 5 5-5M5 20h14"/></svg>';
 
-  // Favorites, kept in this browser for this gallery.
+  // Favorites, kept in this browser for this gallery, by each photo's id
+  // (the catalog's UUID), or its file name without one.
+  const id = (photo) => photo.id || photo.name;
   const key = "gallery-favorites-" + data.id;
   let favorites;
   try { favorites = new Set(JSON.parse(localStorage.getItem(key) || "[]")); } catch { favorites = new Set(); }
   const save = () => { try { localStorage.setItem(key, JSON.stringify([...favorites])); } catch { /* private mode */ } };
 
   let showing = "all";
-  const shown = () => data.photos.filter((p) => showing === "all" || favorites.has(p.name));
+  const shown = () => data.photos.filter((p) => showing === "all" || favorites.has(id(p)));
 
   // Text.
   $(".cover-title").textContent = data.title;
@@ -45,9 +47,9 @@
     const heart = document.createElement("button");
     heart.type = "button";
     heart.className = "heart";
-    heart.dataset.name = photo.name;
+    heart.dataset.id = id(photo);
     heart.innerHTML = heartIcon;
-    heart.addEventListener("click", (e) => { e.stopPropagation(); toggle(photo.name); });
+    heart.addEventListener("click", (e) => { e.stopPropagation(); toggle(id(photo)); });
     const download = document.createElement("a");
     download.href = large(photo);
     download.download = photo.name;
@@ -97,8 +99,8 @@
   });
 
   function paintHearts() {
-    for (const heart of document.querySelectorAll(".heart[data-name]")) {
-      const on = favorites.has(heart.dataset.name);
+    for (const heart of document.querySelectorAll(".heart[data-id]")) {
+      const on = favorites.has(heart.dataset.id);
       heart.classList.toggle("is-on", on);
       heart.setAttribute("aria-pressed", String(on));
       heart.setAttribute("aria-label", on ? "Remove from favorites" : "Add to favorites");
@@ -106,8 +108,8 @@
     $(".count-favorites").textContent = favorites.size;
     $(".send").hidden = favorites.size === 0;
   }
-  function toggle(name) {
-    if (favorites.has(name)) favorites.delete(name); else favorites.add(name);
+  function toggle(key) {
+    if (favorites.has(key)) favorites.delete(key); else favorites.add(key);
     save();
     if (showing === "favorites" && viewer.hidden) render(); else paintHearts();
   }
@@ -138,7 +140,7 @@
     viewerPhoto.onload = () => viewerPhoto.classList.remove("is-loading");
     viewerPhoto.src = large(photo);
     viewerPhoto.alt = photo.name;
-    viewerHeart.dataset.name = photo.name;
+    viewerHeart.dataset.id = id(photo);
     $(".viewer-download").href = large(photo);
     $(".viewer-download").download = photo.name;
     $(".viewer-caption").textContent = photo.name;
@@ -184,7 +186,7 @@
   $(".viewer-close").addEventListener("click", close);
   $(".viewer-prev").addEventListener("click", () => show(current - 1));
   $(".viewer-next").addEventListener("click", () => show(current + 1));
-  viewerHeart.addEventListener("click", () => toggle(list[current].name));
+  viewerHeart.addEventListener("click", () => toggle(id(list[current])));
   document.addEventListener("keydown", (e) => {
     if (!$(".sheet").hidden && e.key === "Escape") { $(".sheet").hidden = true; return; }
     if (viewer.hidden) return;
@@ -192,7 +194,7 @@
     else if (e.key === " ") { e.preventDefault(); play.click(); }
     else if (e.key === "ArrowLeft") show(current - 1);
     else if (e.key === "ArrowRight") show(current + 1);
-    else if (e.key === "f" || e.key === "F") toggle(list[current].name);
+    else if (e.key === "f" || e.key === "F") toggle(id(list[current]));
   });
   let touch = null;
   viewer.addEventListener("touchstart", (e) => { touch = e.touches[0]; }, { passive: true });
@@ -208,7 +210,7 @@
   // Sending favorites.
   const sheet = $(".sheet");
   $(".send").addEventListener("click", () => {
-    const names = data.photos.filter((p) => favorites.has(p.name)).map((p) => p.name);
+    const names = data.photos.filter((p) => favorites.has(id(p))).map((p) => p.name);
     const text = names.join("\n");
     $(".sheet-list").value = text;
     const mail = $(".sheet-mail");

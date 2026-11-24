@@ -1,7 +1,7 @@
 [extension]
 id = "pro.stanczak.web-gallery"
 name = "Web Gallery"
-version = "0.3.0"
+version = "0.4.0"
 rawmakase = ">=0.7"
 api = 4
 license = "MIT"

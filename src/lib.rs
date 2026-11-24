@@ -7,8 +7,12 @@ use anyhow::{Context as _, Result, bail, ensure};
 use image::{
     DynamicImage, ImageDecoder, ImageReader, codecs::jpeg::JpegEncoder, imageops::FilterType,
 };
-use rawmakase_extension::protocol::method::{Delivered, ExportDeliver};
-use rawmakase_extension::{Context, ErrorCode, Extension, RemoteError};
+use rawmakase_extension::protocol::method::{
+    ExportBegin, ExportEnd, ExportEnded, ExportFile, FileResult, Sent,
+};
+use rawmakase_extension::{
+    Context, Delivery, ErrorCode, ExportDestination, Extension, RemoteError, collected,
+};
 use serde::Serialize;
 use std::{
     collections::HashSet,
@@ -57,6 +61,10 @@ pub struct Options {
     pub layout: Layout,
     /// The photo on the cover, by its place in `photos`; the first by default.
     pub cover: usize,
+    /// Each photo's id, by its place in `photos`, which a client's favorites
+    /// keep it by: the catalog's UUID from RAWmakase. A photo without one is
+    /// kept by its file name.
+    pub ids: Vec<Option<String>>,
 }
 
 impl Default for Options {
@@ -68,6 +76,7 @@ impl Default for Options {
             email: String::new(),
             layout: Layout::Masonry,
             cover: 0,
+            ids: Vec::new(),
         }
     }
 }
@@ -78,6 +87,9 @@ pub struct Photo {
     pub name: String,
     pub width: u32,
     pub height: u32,
+    /// Its id for favorites ([`Options::ids`]); none keeps it by `name`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
 }
 
 #[derive(Serialize)]
@@ -130,7 +142,10 @@ pub fn build(photos: &[PathBuf], out: &Path, options: &Options) -> Result<Vec<Ph
             .flat_map(|h| h.join().expect("a resize thread panicked"))
             .collect()
     });
-    let photos = results.into_iter().collect::<Result<Vec<_>>>()?;
+    let mut photos = results.into_iter().collect::<Result<Vec<_>>>()?;
+    for (photo, id) in photos.iter_mut().zip(&options.ids) {
+        photo.id.clone_from(id);
+    }
     let data = Data {
         id: gallery_id(&options.title, &photos),
         title: &options.title,
@@ -217,6 +232,7 @@ fn resize(path: &Path, name: &str, large: &Path, thumb: &Path) -> Result<Photo> 
         name: name.to_string(),
         width: shown.width(),
         height: shown.height(),
+        id: None,
     })
 }
 
@@ -342,60 +358,108 @@ fn escape(text: &str) -> String {
 /// The gallery's folder, inside the export's folder.
 pub const FOLDER: &str = "gallery";
 
-fn deliver(cx: &Context, deliver: ExportDeliver) -> Result<Delivered, RemoteError> {
+/// Builds the gallery from a whole delivery, its files in the export's
+/// order, in a [`FOLDER`] folder inside the export's folder.
+fn deliver(cx: &Context, mut delivery: Delivery) -> Result<ExportEnded, RemoteError> {
+    let folder = delivery.begin.folder.clone().ok_or_else(scattered)?;
+    let mut files = std::mem::take(&mut delivery.files);
+    files.sort_by_key(|f| f.index);
+    if files.is_empty() {
+        return Ok(ExportEnded::default());
+    }
     cx.progress(None, Some("Building the gallery"));
-    let photos: Vec<_> = deliver.files.iter().map(|f| f.path.clone()).collect();
-    let dates: Vec<&str> = deliver
-        .files
-        .iter()
-        .filter_map(|f| f.captured.as_deref())
-        .collect();
+    let begin = &delivery.begin;
+    let photos: Vec<_> = files.iter().map(|f| f.path.clone()).collect();
+    let dates: Vec<&str> = files.iter().filter_map(|f| f.captured.as_deref()).collect();
     // An option left empty keeps what the export gives: the folder's name, the dates.
     let text = |id: &str| {
-        deliver
+        begin
             .option_str(id)
             .map(str::trim)
             .filter(|v| !v.is_empty())
             .map(str::to_string)
     };
-    let layout = match deliver.option_str("layout") {
+    let layout = match begin.option_str("layout") {
         Some(layout) => layout
             .to_ascii_lowercase()
             .parse()
             .map_err(|e| RemoteError::new(ErrorCode::InvalidRequest, format!("{e:#}")))?,
         None => Layout::Masonry,
     };
+    let name = folder
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
     let options = Options {
-        title: text("title").unwrap_or_else(|| deliver.label.clone()),
+        title: text("title").unwrap_or_else(|| name.clone()),
         subtitle: text("subtitle").unwrap_or_else(|| date_line(&dates)),
         author: text("author").unwrap_or_default(),
         email: text("email").unwrap_or_default(),
         layout,
-        cover: cover(&deliver),
+        cover: cover(&files),
+        ids: files.iter().map(|f| f.photo_uuid.clone()).collect(),
     };
-    let out = deliver.folder.join(FOLDER);
-    let built = build(&photos, &out, &options)
+    let out = folder.join(FOLDER);
+    build(&photos, &out, &options)
         .map_err(|e| RemoteError::new(ErrorCode::Unavailable, format!("{e:#}")))?;
-    Ok(Delivered {
-        sent: u32::try_from(built.len()).unwrap_or(u32::MAX),
-        message: Some(format!("Built the gallery {}", deliver.label)),
+    Ok(ExportEnded {
+        files: files
+            .iter()
+            .map(|f| FileResult {
+                index: f.index,
+                result: Sent::Sent,
+                message: None,
+                remote_id: None,
+                url: None,
+            })
+            .collect(),
+        message: Some(format!("Built the gallery {}", options.title)),
         location: Some(out.join("index.html").display().to_string()),
     })
 }
 
+/// Why an export beside its originals has no gallery.
+fn scattered() -> RemoteError {
+    RemoteError::new(
+        ErrorCode::InvalidRequest,
+        "a gallery needs the photos exported to one folder: choose a folder in the Export dialog",
+    )
+}
+
 /// The cover: the first photo with the yellow label, or else the first.
-fn cover(deliver: &ExportDeliver) -> usize {
-    deliver
-        .files
+fn cover(files: &[ExportFile]) -> usize {
+    files
         .iter()
-        .position(|f| f.label.as_deref() == Some("yellow"))
+        .position(|f| {
+            f.catalog
+                .as_ref()
+                .is_some_and(|c| c.label.as_deref() == Some("yellow"))
+        })
         .unwrap_or(0)
+}
+
+/// The `web` destination: the whole delivery is collected and built at its
+/// end, and an export with no one folder is refused as it begins.
+struct Gallery<T>(T);
+impl<T: ExportDestination> ExportDestination for Gallery<T> {
+    fn begin(&mut self, cx: &Context, begin: ExportBegin) -> Result<(), RemoteError> {
+        if begin.folder.is_none() {
+            return Err(scattered());
+        }
+        self.0.begin(cx, begin)
+    }
+    fn file(&mut self, cx: &Context, file: ExportFile) -> Result<(), RemoteError> {
+        self.0.file(cx, file)
+    }
+    fn end(&mut self, cx: &Context, end: ExportEnd) -> Result<ExportEnded, RemoteError> {
+        self.0.end(cx, end)
+    }
 }
 
 /// The extension: its `web` export destination builds the gallery in a
 /// [`FOLDER`] folder beside the exported photos.
 pub fn extension() -> Extension {
-    Extension::new().export_destination("web", deliver)
+    Extension::new().export_destination("web", Gallery(collected(deliver)))
 }
 
 #[cfg(test)]
@@ -427,7 +491,8 @@ mod tests {
             Photo {
                 name: "big-one.jpg".into(),
                 width: 2400,
-                height: 1600
+                height: 1600,
+                id: None
             }
         );
         assert_eq!(
@@ -435,7 +500,8 @@ mod tests {
             Photo {
                 name: "small.jpg".into(),
                 width: 600,
-                height: 900
+                height: 900,
+                id: None
             }
         );
         assert_eq!(built[2].name, "Big-One-2.jpg");

@@ -422,7 +422,7 @@ fn deliver(cx: &Context, mut delivery: Delivery) -> Result<ExportEnded, RemoteEr
 fn scattered() -> RemoteError {
     RemoteError::new(
         ErrorCode::InvalidRequest,
-        "a gallery needs the photos exported to one folder: choose a folder in the Export dialog",
+        "the photos go to several folders; export them to one",
     )
 }
 

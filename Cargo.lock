@@ -189,7 +189,7 @@ checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 [[package]]
 name = "rawmakase-extension"
 version = "0.1.0"
-source = "git+https://github.com/m-stanczak/rawmakase?branch=export-destination#fc598fd7a3bea62c94c9566031b33eb449995e8f"
+source = "git+https://github.com/m-stanczak/rawmakase?branch=export-destination#eb44345ec6717e0de2a30b490fbbb0ee93cf02b4"
 dependencies = [
  "libc",
  "rawmakase-extension-protocol",
@@ -201,7 +201,7 @@ dependencies = [
 [[package]]
 name = "rawmakase-extension-protocol"
 version = "0.1.0"
-source = "git+https://github.com/m-stanczak/rawmakase?branch=export-destination#fc598fd7a3bea62c94c9566031b33eb449995e8f"
+source = "git+https://github.com/m-stanczak/rawmakase?branch=export-destination#eb44345ec6717e0de2a30b490fbbb0ee93cf02b4"
 dependencies = [
  "schemars",
  "semver",
